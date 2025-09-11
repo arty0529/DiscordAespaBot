@@ -26,22 +26,24 @@ TWITTER_ROLE_IDS = {
 
 # ==== RSS feed URLs ====
 FEEDS = {
-    # Group Instagram, YouTube & TikTok
-    "Instagram_aespa": "https://rsshub.app/instagram/user/aespa_official",
-    "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg",
-    "TikTok": "https://rss.app/feed/lySKpbrl5Df28zrd",
+    # Instagram feeds
+    "Instagram_aespa": "https://rsshub-sc05.onrender.com/instagram/user/aespa_official",
+    "Instagram_karina": "https://rsshub-sc05.onrender.com/instagram/user/katarinabluu",
+    "Instagram_winter": "https://rsshub-sc05.onrender.com/instagram/user/imwinter",
+    "Instagram_ningning": "https://rsshub-sc05.onrender.com/instagram/user/imnotningning",
+    "Instagram_aeri": "https://rsshub-sc05.onrender.com/instagram/user/aerichandesu",
 
-    # Members' Instagram Accounts
-    "Instagram_karina": "https://rsshub.app/instagram/user/katarinabluu",
-    "Instagram_winter": "https://rsshub.app/instagram/user/imwinter",
-    "Instagram_ningning": "https://rsshub.app/instagram/user/imnotningning",
-    "Instagram_aeri": "https://rsshub.app/instagram/user/aerichandesu",
+    # Twitter feeds
+    "Twitter_rinabbl": "https://rsshub-sc05.onrender.com/twitter/user/rinabbls",
+    "Twitter_winterbbl": "https://rsshub-sc05.onrender.com/twitter/user/winterbbls",
+    "Twitter_ningbbl": "https://rsshub-sc05.onrender.com/twitter/user/ningbbls",
+    "Twitter_aeribbl": "https://rsshub-sc05.onrender.com/twitter/user/aeribbls",
 
-    # Members' Twitter Accounts
-    "Twitter_rinabbl": "https://rsshub.app/twitter/user/rinabbls",
-    "Twitter_winterbbl": "https://rsshub.app/twitter/user/winterbbls",
-    "Twitter_ningbbl": "https://rsshub.app/twitter/user/ningbbls",
-    "Twitter_aeribbl": "https://rsshub.app/twitter/user/aeribbls"
+    # TikTok feed
+    "TikTok": "https://rsshub-sc05.onrender.com/tiktok/user/aespa_official",
+
+    # YouTube feed (unchanged)
+    "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg"
 }
 
 # ==== KEEP-ALIVE SERVER (for Replit) ====
