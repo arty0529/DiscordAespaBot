@@ -24,22 +24,21 @@ TWITTER_ROLE_IDS = {
     "Twitter_aeribbl": 1232594310835470417
 }
 
-# ==== RSS feed URLs ====
 FEEDS = {
-    # Instagram feeds
+    # Instagram feeds (require INSTAGRAM_COOKIE)
     "Instagram_aespa": "https://rsshub-sc05.onrender.com/instagram/user/aespa_official",
     "Instagram_karina": "https://rsshub-sc05.onrender.com/instagram/user/katarinabluu",
     "Instagram_winter": "https://rsshub-sc05.onrender.com/instagram/user/imwinter",
     "Instagram_ningning": "https://rsshub-sc05.onrender.com/instagram/user/imnotningning",
     "Instagram_aeri": "https://rsshub-sc05.onrender.com/instagram/user/aerichandesu",
 
-    # Twitter feeds
-    "Twitter_rinabbl": "https://rsshub-sc05.onrender.com/twitter/user/rinabbls",
-    "Twitter_winterbbl": "https://rsshub-sc05.onrender.com/twitter/user/winterbbls",
-    "Twitter_ningbbl": "https://rsshub-sc05.onrender.com/twitter/user/ningbbls",
-    "Twitter_aeribbl": "https://rsshub-sc05.onrender.com/twitter/user/aeribbls",
+    # Twitter feeds (using Nitter instead of Twitter API)
+    "Twitter_rinabbl": "https://rsshub-sc05.onrender.com/nitter/user/rinabbls",
+    "Twitter_winterbbl": "https://rsshub-sc05.onrender.com/nitter/user/winterbbls",
+    "Twitter_ningbbl": "https://rsshub-sc05.onrender.com/nitter/user/ningbbls",
+    "Twitter_aeribbl": "https://rsshub-sc05.onrender.com/nitter/user/aeribbls",
 
-    # TikTok feed
+    # TikTok feed (requires Puppeteer/Chrome)
     "TikTok": "https://rsshub-sc05.onrender.com/tiktok/user/aespa_official",
 
     # YouTube feed (unchanged)
