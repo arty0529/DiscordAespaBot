@@ -30,8 +30,7 @@ FEEDS_BY_CHANNEL = {
         "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg",
 
         # BBL Twitters
-        "Twitter_rinabbl": "https://rsshub-sc05.onrender.com/nitter/user/rinabbls",
-        "Twitter_winterbbl": "https://rsshub-sc05.onrender.com/nitter/user/winterbbls",
+        "Twitter_winrinabbl": "https://rsshub-sc05.onrender.com/nitter/user/winrinabbl",
         "Twitter_ningbbl": "https://rsshub-sc05.onrender.com/nitter/user/ningtexts",
         "Twitter_aeribbl": "https://rsshub-sc05.onrender.com/nitter/user/aeribbls",
     },
@@ -150,7 +149,7 @@ async def on_ready():
     await client.wait_until_ready()
     print(f"✅ Logged in as {client.user}")
 
-    activity = discord.Activity(type=discord.ActivityType.listening, name="Dirty Work by aespa")
+    activity = discord.Activity(type=discord.ActivityType.listening, name="Rich Man by aespa")
     await client.change_presence(status=discord.Status.online, activity=activity)
 
     check_feeds.start()
