@@ -31,6 +31,7 @@ FEEDS_BY_CHANNEL = {
 
         # BBL Twitters
         "Twitter_winrinabbl": "https://rsshub-sc05.onrender.com/nitter/user/winrinabbl",
+        "Twitter_winrinabbl1": "https://rsshub-sc05.onrender.com/nitter/user/winrina_bbl",
         "Twitter_ningbbl": "https://rsshub-sc05.onrender.com/nitter/user/ningtexts",
         "Twitter_aeribbl": "https://rsshub-sc05.onrender.com/nitter/user/aeribbls",
     },
