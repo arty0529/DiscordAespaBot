@@ -3,14 +3,13 @@ import re
 import discord
 import feedparser
 from discord.ext import tasks
-from discord.ext import commands
 from flask import Flask
 from threading import Thread
 
 # ==== CONFIGURATION ====
 TOKEN = os.getenv("DISCORD_TOKEN")
-INSTAGRAM_CHANNEL_ID = 1232207096821321799
-YOUTUBE_CHANNEL_ID = 1232680374057041970
+
+AESPA_UPDATES_CHANNEL_ID = 1232207096821321799
 KARINA_CHANNEL_ID = 1232593363350458369
 GISELLE_CHANNEL_ID = 1232593424448749578
 WINTER_CHANNEL_ID = 1232593476902719538
@@ -18,34 +17,39 @@ NINGNING_CHANNEL_ID = 1232593537770717234
 CHECK_INTERVAL_MINUTES = 5
 
 TWITTER_ROLE_IDS = {
-    "Twitter_rinabbl": 1232593678757793852,
-    "Twitter_winterbbl": 1232594368129667133,
-    "Twitter_ningbbl": 1232594417773318196,
-    "Twitter_aeribbl": 1232594310835470417
+    "TWITTER_BBL": 123220709682132179  # adjust if needed
 }
 
-FEEDS = {
-    # Instagram feeds (require INSTAGRAM_COOKIE)
-    "Instagram_aespa": "https://rsshub-sc05.onrender.com/instagram/user/aespa_official",
-    "Instagram_karina": "https://rsshub-sc05.onrender.com/instagram/user/katarinabluu",
-    "Instagram_winter": "https://rsshub-sc05.onrender.com/instagram/user/imwinter",
-    "Instagram_ningning": "https://rsshub-sc05.onrender.com/instagram/user/imnotningning",
-    "Instagram_aeri": "https://rsshub-sc05.onrender.com/instagram/user/aerichandesu",
+# ==== FEEDS BY CHANNEL ====
+FEEDS_BY_CHANNEL = {
+    AESPA_UPDATES_CHANNEL_ID: {
+        # aespa official
+        "Instagram_aespa": "https://rsshub-sc05.onrender.com/instagram/user/aespa_official",
+        "Twitter_aespa": "https://rsshub-sc05.onrender.com/nitter/user/aespa_official",
+        "TikTok": "https://rsshub-sc05.onrender.com/tiktok/user/aespa_official",
+        "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg",
 
-    # Twitter feeds (using Nitter instead of Twitter API)
-    "Twitter_rinabbl": "https://rsshub-sc05.onrender.com/nitter/user/rinabbls",
-    "Twitter_winterbbl": "https://rsshub-sc05.onrender.com/nitter/user/winterbbls",
-    "Twitter_ningbbl": "https://rsshub-sc05.onrender.com/nitter/user/ningbbls",
-    "Twitter_aeribbl": "https://rsshub-sc05.onrender.com/nitter/user/aeribbls",
-
-    # TikTok feed (requires Puppeteer/Chrome)
-    "TikTok": "https://rsshub-sc05.onrender.com/tiktok/user/aespa_official",
-
-    # YouTube feed (unchanged)
-    "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg"
+        # BBL Twitters
+        "Twitter_rinabbl": "https://rsshub-sc05.onrender.com/nitter/user/rinabbls",
+        "Twitter_winterbbl": "https://rsshub-sc05.onrender.com/nitter/user/winterbbls",
+        "Twitter_ningbbl": "https://rsshub-sc05.onrender.com/nitter/user/ningtexts",
+        "Twitter_aeribbl": "https://rsshub-sc05.onrender.com/nitter/user/aeribbls",
+    },
+    KARINA_CHANNEL_ID: {
+        "Instagram_karina": "https://rsshub-sc05.onrender.com/instagram/user/katarinabluu",
+    },
+    WINTER_CHANNEL_ID: {
+        "Instagram_winter": "https://rsshub-sc05.onrender.com/instagram/user/imwinter",
+    },
+    NINGNING_CHANNEL_ID: {
+        "Instagram_ningning": "https://rsshub-sc05.onrender.com/instagram/user/imnotningning",
+    },
+    GISELLE_CHANNEL_ID: {
+        "Instagram_aeri": "https://rsshub-sc05.onrender.com/instagram/user/aerichandesu",
+    },
 }
 
-# ==== KEEP-ALIVE SERVER (for Replit) ====
+# ==== KEEP-ALIVE SERVER (for Replit/Render) ====
 app = Flask("")
 
 @app.route("/")
@@ -67,7 +71,7 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 # ==== LAST SEEN POSTS CACHE ====
-last_seen = {key: None for key in FEEDS}
+last_seen = {key: None for feeds in FEEDS_BY_CHANNEL.values() for key in feeds}
 
 # ==== UTILS ====
 def extract_thumbnail_from_summary(summary):
@@ -82,22 +86,33 @@ def get_latest_entry(feed_url):
         print(f"❌ Failed to parse feed {feed_url}: {e}")
         return None
 
+# ==== FEED CHECK LOOP ====
 @tasks.loop(minutes=CHECK_INTERVAL_MINUTES)
 async def check_feeds():
-    for platform_key, url in FEEDS.items():
-        entry = get_latest_entry(url)
-        if not entry:
-            print(f"❌ No entry found for {platform_key}.")
+    for channel_id, feeds in FEEDS_BY_CHANNEL.items():
+        channel = client.get_channel(channel_id)
+        if not channel:
+            print(f"❌ Channel not found for ID {channel_id}")
             continue
 
-        link = entry.get("link") or entry.get("id")
-        title = entry.get("title", f"New post on {platform_key}")
-        summary = entry.get("summary", "")
+        for platform_key, url in feeds.items():
+            entry = get_latest_entry(url)
+            if not entry:
+                print(f"❌ No entry found for {platform_key}.")
+                continue
 
-        if link != last_seen[platform_key]:
+            link = entry.get("link") or entry.get("id")
+            title = entry.get("title", f"New post on {platform_key}")
+            summary = entry.get("summary", "")
+
+            if link == last_seen.get(platform_key):
+                print(f"ℹ️ No new post for {platform_key}.")
+                continue
+
+            # update cache
             last_seen[platform_key] = link
 
-            # Instagram Posts
+            # Instagram posts
             if platform_key.startswith("Instagram"):
                 username = platform_key.split("_")[1]
                 thumbnail_url = None
@@ -107,62 +122,28 @@ async def check_feeds():
                         thumbnail_url = media[0].get("url")
                 if not thumbnail_url:
                     thumbnail_url = extract_thumbnail_from_summary(summary)
-                embed = discord.Embed(title=f"📸 New Instagram post by {username}", description=summary)
+
+                embed = discord.Embed(
+                    title=f"📸 New Instagram post by {username}",
+                    description=summary,
+                )
                 if thumbnail_url:
                     embed.set_image(url=thumbnail_url)
 
-                if username == "karina":
-                    channel = client.get_channel(KARINA_CHANNEL_ID)
-                elif username == "giselle":
-                    channel = client.get_channel(GISELLE_CHANNEL_ID)
-                elif username == "winter":
-                    channel = client.get_channel(WINTER_CHANNEL_ID)
-                elif username == "ningning":
-                    channel = client.get_channel(NINGNING_CHANNEL_ID)
-                elif username == "aespa":
-                    channel = client.get_channel(INSTAGRAM_CHANNEL_ID)
-                else:
-                    channel = client.get_channel(YOUTUBE_CHANNEL_ID)
+                await channel.send(content=link, embed=embed)
 
-                if channel:
-                    await channel.send(content=link, embed=embed)
-                else:
-                    print(f"❌ Channel not found for {username} Instagram")
-
-            # Twitter Posts
+            # Twitter posts
             elif platform_key.startswith("Twitter"):
                 username = platform_key.split("_")[1]
-                channel = None
-                role_id = TWITTER_ROLE_IDS.get(platform_key)
+                role_id = TWITTER_ROLE_IDS.get("TWITTER_BBL")
+                mention = f"<@&{role_id}>" if role_id else ""
+                await channel.send(f"🐦 {mention} New tweet by @{username}:\n**{title}**\n{link}")
 
-                if username == "rinabbl":
-                    channel = client.get_channel(KARINA_CHANNEL_ID)
-                elif username == "aeribbl":
-                    channel = client.get_channel(GISELLE_CHANNEL_ID)
-                elif username == "winterbbl":
-                    channel = client.get_channel(WINTER_CHANNEL_ID)
-                elif username == "ningbbl":
-                    channel = client.get_channel(NINGNING_CHANNEL_ID)
-                else:
-                    channel = client.get_channel(INSTAGRAM_CHANNEL_ID)
-
-                if channel:
-                    mention = f"<@&{role_id}>" if role_id else ""
-                    await channel.send(f"🐦 {mention} New tweet by @{username}:\n**{title}**\n{link}")
-                else:
-                    print(f"❌ Channel not found for {username} Twitter")
-
-            # YouTube and TikTok
-            else:
-                icon = "📢" if "YouTube" in platform_key else "🎵"
-                channel = client.get_channel(YOUTUBE_CHANNEL_ID)
-                if channel:
-                    await channel.send(f"{icon} New post:\n**{title}**\n{link}")
-                else:
-                    print(f"❌ Channel not found for {platform_key} (ID: {YOUTUBE_CHANNEL_ID})")
-
-        else:
-            print(f"ℹ️ No new post for {platform_key}.")
+            # YouTube / TikTok
+            elif "YouTube" in platform_key:
+                await channel.send(f"📢 New YouTube upload:\n**{title}**\n{link}")
+            elif "TikTok" in platform_key:
+                await channel.send(f"🎵 New TikTok post:\n**{title}**\n{link}")
 
 @client.event
 async def on_ready():
@@ -181,3 +162,4 @@ if TOKEN:
     client.run(TOKEN)
 else:
     print("❌ DISCORD_TOKEN is not set in environment variables.")
+
