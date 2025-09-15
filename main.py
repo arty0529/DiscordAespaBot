@@ -6,6 +6,7 @@ import requests
 from discord.ext import tasks
 from flask import Flask
 from threading import Thread
+from collections import deque
 
 # ==== CONFIGURATION ====
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -80,8 +81,10 @@ intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-# ==== LAST SEEN POSTS CACHE ====
-last_seen = {key: set() for feeds in FEEDS_BY_CHANNEL.values() for key in feeds}
+# ==== LAST SEEN POSTS CACHE (limit 20 per feed) ====
+last_seen = {
+    key: deque(maxlen=20) for feeds in FEEDS_BY_CHANNEL.values() for key in feeds
+}
 
 # ==== UTILS ====
 def extract_thumbnail_from_summary(summary):
@@ -123,6 +126,7 @@ async def check_feeds():
 
         for platform_key, feed_value in feeds.items():
             url = feed_value
+            username = feed_value  # keep actual username for later
 
             # Twitter: resolve via Nitter
             if platform_key.startswith("Twitter"):
@@ -143,15 +147,16 @@ async def check_feeds():
                 summary = entry.get("summary", "")
 
                 if link in last_seen[platform_key]:
+                    print(f"[CACHE HIT] {platform_key} already has {link}")
                     continue  # already sent
 
                 # update cache
-                last_seen[platform_key].add(link)
+                last_seen[platform_key].append(link)
                 print(f"✅ New entry for {platform_key}: {title} ({link})")
 
                 # Instagram posts
                 if platform_key.startswith("Instagram"):
-                    username = platform_key.split("_")[1]
+                    ig_user = platform_key.split("_")[1]
                     thumbnail_url = None
                     if "media_content" in entry:
                         media = entry.media_content
@@ -161,7 +166,7 @@ async def check_feeds():
                         thumbnail_url = extract_thumbnail_from_summary(summary)
 
                     embed = discord.Embed(
-                        title=f"📸 New Instagram post by {username}",
+                        title=f"📸 New Instagram post by {ig_user}",
                         description=summary,
                     )
                     if thumbnail_url:
@@ -171,7 +176,6 @@ async def check_feeds():
 
                 # Twitter posts
                 elif platform_key.startswith("Twitter"):
-                    username = feed_value  # use actual username
                     role_id = TWITTER_ROLE_IDS.get("TWITTER_BBL")
                     mention = f"<@&{role_id}>" if role_id else ""
                     await channel.send(f"🐦 {mention} New tweet by @{username}:\n**{title}**\n{link}")
@@ -199,3 +203,4 @@ if TOKEN:
     client.run(TOKEN)
 else:
     print("❌ DISCORD_TOKEN is not set in environment variables.")
+
