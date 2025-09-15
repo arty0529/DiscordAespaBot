@@ -43,6 +43,7 @@ FEEDS_BY_CHANNEL = {
         "Twitter_winrinabbl1": "winrina_bbl",
         "Twitter_ningbbl": "ningtexts",
         "Twitter_aeribbl": "aeribbls",
+        "Twitter_testacc": "ctrlvart",
     },
     KARINA_CHANNEL_ID: {
         "Instagram_karina": "https://rsshub-sc05.onrender.com/instagram/user/katarinabluu",
