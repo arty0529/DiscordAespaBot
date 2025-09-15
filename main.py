@@ -2,6 +2,7 @@ import os
 import re
 import discord
 import feedparser
+import requests
 from discord.ext import tasks
 from flask import Flask
 from threading import Thread
@@ -20,20 +21,28 @@ TWITTER_ROLE_IDS = {
     "TWITTER_BBL": 123220709682132179  # adjust if needed
 }
 
+# ==== NITTER INSTANCES (for fallback) ====
+NITTER_INSTANCES = [
+    "https://nitter.poast.org",
+    "https://nitter.net",
+    "https://nitter.42l.fr",
+    "https://nitter.kavin.rocks",
+]
+
 # ==== FEEDS BY CHANNEL ====
 FEEDS_BY_CHANNEL = {
     AESPA_UPDATES_CHANNEL_ID: {
         # aespa official
         "Instagram_aespa": "https://rsshub-sc05.onrender.com/instagram/user/aespa_official",
-        "Twitter_aespa": "https://rsshub-sc05.onrender.com/nitter/user/aespa_official",
+        "Twitter_aespa": "aespa_official",
         "TikTok": "https://rsshub-sc05.onrender.com/tiktok/user/aespa_official",
         "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg",
 
-        # BBL Twitters
-        "Twitter_winrinabbl": "https://rsshub-sc05.onrender.com/nitter/user/winrinabbl",
-        "Twitter_winrinabbl1": "https://rsshub-sc05.onrender.com/nitter/user/winrina_bbl",
-        "Twitter_ningbbl": "https://rsshub-sc05.onrender.com/nitter/user/ningtexts",
-        "Twitter_aeribbl": "https://rsshub-sc05.onrender.com/nitter/user/aeribbls",
+        # BBL Twitters (usernames only)
+        "Twitter_winrinabbl": "winrinabbl",
+        "Twitter_winrinabbl1": "winrina_bbl",
+        "Twitter_ningbbl": "ningtexts",
+        "Twitter_aeribbl": "aeribbls",
     },
     KARINA_CHANNEL_ID: {
         "Instagram_karina": "https://rsshub-sc05.onrender.com/instagram/user/katarinabluu",
@@ -86,6 +95,19 @@ def get_latest_entry(feed_url):
         print(f"❌ Failed to parse feed {feed_url}: {e}")
         return None
 
+def get_nitter_feed(username):
+    """Try multiple Nitter instances until one works."""
+    for base in NITTER_INSTANCES:
+        url = f"{base}/{username}/rss"
+        try:
+            r = requests.get(url, timeout=10)
+            if r.status_code == 200 and r.text.strip():
+                return url
+        except Exception:
+            continue
+    print(f"❌ No working Nitter instance found for {username}")
+    return None
+
 # ==== FEED CHECK LOOP ====
 @tasks.loop(minutes=CHECK_INTERVAL_MINUTES)
 async def check_feeds():
@@ -95,7 +117,16 @@ async def check_feeds():
             print(f"❌ Channel not found for ID {channel_id}")
             continue
 
-        for platform_key, url in feeds.items():
+        for platform_key, feed_value in feeds.items():
+            url = feed_value
+
+            # Twitter: resolve via Nitter
+            if platform_key.startswith("Twitter"):
+                url = get_nitter_feed(feed_value)
+                if not url:
+                    print(f"❌ Skipping {platform_key}, no working Nitter feed.")
+                    continue
+
             entry = get_latest_entry(url)
             if not entry:
                 print(f"❌ No entry found for {platform_key}.")
