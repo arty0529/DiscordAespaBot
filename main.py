@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import discord
 import feedparser
 import requests
@@ -81,10 +82,22 @@ intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-# ==== LAST SEEN POSTS CACHE (limit 20 per feed) ====
-last_seen = {
-    key: deque(maxlen=20) for feeds in FEEDS_BY_CHANNEL.values() for key in feeds
-}
+# ==== LAST SEEN POSTS CACHE (persistent) ====
+LAST_SEEN_FILE = "last_seen.json"
+
+def load_last_seen():
+    try:
+        with open(LAST_SEEN_FILE, "r") as f:
+            data = json.load(f)
+            return {k: deque(v, maxlen=20) for k, v in data.items()}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {key: deque(maxlen=20) for feeds in FEEDS_BY_CHANNEL.values() for key in feeds}
+
+def save_last_seen():
+    with open(LAST_SEEN_FILE, "w") as f:
+        json.dump({k: list(v) for k, v in last_seen.items()}, f)
+
+last_seen = load_last_seen()
 
 # ==== UTILS ====
 def extract_thumbnail_from_summary(summary):
@@ -150,8 +163,9 @@ async def check_feeds():
                     print(f"[CACHE HIT] {platform_key} already has {link}")
                     continue  # already sent
 
-                # update cache
+                # update cache + save persistently
                 last_seen[platform_key].append(link)
+                save_last_seen()
                 print(f"✅ New entry for {platform_key}: {title} ({link})")
 
                 # Instagram posts
@@ -203,4 +217,3 @@ if TOKEN:
     client.run(TOKEN)
 else:
     print("❌ DISCORD_TOKEN is not set in environment variables.")
-
