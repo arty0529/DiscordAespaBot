@@ -81,20 +81,21 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 # ==== LAST SEEN POSTS CACHE ====
-last_seen = {key: None for feeds in FEEDS_BY_CHANNEL.values() for key in feeds}
+last_seen = {key: set() for feeds in FEEDS_BY_CHANNEL.values() for key in feeds}
 
 # ==== UTILS ====
 def extract_thumbnail_from_summary(summary):
     match = re.search(r'<img[^>]+src="([^"]+)', summary)
     return match.group(1) if match else None
 
-def get_latest_entry(feed_url):
+def get_feed_entries(feed_url):
+    """Return parsed feed entries (list)."""
     try:
         feed = feedparser.parse(feed_url)
-        return feed.entries[0] if feed.entries else None
+        return feed.entries if feed.entries else []
     except Exception as e:
         print(f"❌ Failed to parse feed {feed_url}: {e}")
-        return None
+        return []
 
 def get_nitter_feed(username):
     """Try multiple Nitter instances until one works."""
@@ -112,6 +113,8 @@ def get_nitter_feed(username):
 # ==== FEED CHECK LOOP ====
 @tasks.loop(minutes=CHECK_INTERVAL_MINUTES)
 async def check_feeds():
+    print("🔄 Starting new fetch cycle...")
+
     for channel_id, feeds in FEEDS_BY_CHANNEL.items():
         channel = client.get_channel(channel_id)
         if not channel:
@@ -128,54 +131,56 @@ async def check_feeds():
                     print(f"❌ Skipping {platform_key}, no working Nitter feed.")
                     continue
 
-            entry = get_latest_entry(url)
-            if not entry:
-                print(f"❌ No entry found for {platform_key}.")
+            print(f"📡 Checking {platform_key} ({url})")
+            entries = get_feed_entries(url)
+            if not entries:
+                print(f"❌ No entries found for {platform_key}.")
                 continue
 
-            link = entry.get("link") or entry.get("id")
-            title = entry.get("title", f"New post on {platform_key}")
-            summary = entry.get("summary", "")
+            for entry in entries:
+                link = entry.get("link") or entry.get("id")
+                title = entry.get("title", f"New post on {platform_key}")
+                summary = entry.get("summary", "")
 
-            if link == last_seen.get(platform_key):
-                print(f"ℹ️ No new post for {platform_key}.")
-                continue
+                if link in last_seen[platform_key]:
+                    continue  # already sent
 
-            # update cache
-            last_seen[platform_key] = link
+                # update cache
+                last_seen[platform_key].add(link)
+                print(f"✅ New entry for {platform_key}: {title} ({link})")
 
-            # Instagram posts
-            if platform_key.startswith("Instagram"):
-                username = platform_key.split("_")[1]
-                thumbnail_url = None
-                if "media_content" in entry:
-                    media = entry.media_content
-                    if isinstance(media, list) and media:
-                        thumbnail_url = media[0].get("url")
-                if not thumbnail_url:
-                    thumbnail_url = extract_thumbnail_from_summary(summary)
+                # Instagram posts
+                if platform_key.startswith("Instagram"):
+                    username = platform_key.split("_")[1]
+                    thumbnail_url = None
+                    if "media_content" in entry:
+                        media = entry.media_content
+                        if isinstance(media, list) and media:
+                            thumbnail_url = media[0].get("url")
+                    if not thumbnail_url:
+                        thumbnail_url = extract_thumbnail_from_summary(summary)
 
-                embed = discord.Embed(
-                    title=f"📸 New Instagram post by {username}",
-                    description=summary,
-                )
-                if thumbnail_url:
-                    embed.set_image(url=thumbnail_url)
+                    embed = discord.Embed(
+                        title=f"📸 New Instagram post by {username}",
+                        description=summary,
+                    )
+                    if thumbnail_url:
+                        embed.set_image(url=thumbnail_url)
 
-                await channel.send(content=link, embed=embed)
+                    await channel.send(content=link, embed=embed)
 
-            # Twitter posts
-            elif platform_key.startswith("Twitter"):
-                username = platform_key.split("_")[1]
-                role_id = TWITTER_ROLE_IDS.get("TWITTER_BBL")
-                mention = f"<@&{role_id}>" if role_id else ""
-                await channel.send(f"🐦 {mention} New tweet by @{username}:\n**{title}**\n{link}")
+                # Twitter posts
+                elif platform_key.startswith("Twitter"):
+                    username = feed_value  # use actual username
+                    role_id = TWITTER_ROLE_IDS.get("TWITTER_BBL")
+                    mention = f"<@&{role_id}>" if role_id else ""
+                    await channel.send(f"🐦 {mention} New tweet by @{username}:\n**{title}**\n{link}")
 
-            # YouTube / TikTok
-            elif "YouTube" in platform_key:
-                await channel.send(f"📢 New YouTube upload:\n**{title}**\n{link}")
-            elif "TikTok" in platform_key:
-                await channel.send(f"🎵 New TikTok post:\n**{title}**\n{link}")
+                # YouTube / TikTok
+                elif "YouTube" in platform_key:
+                    await channel.send(f"📢 New YouTube upload:\n**{title}**\n{link}")
+                elif "TikTok" in platform_key:
+                    await channel.send(f"🎵 New TikTok post:\n**{title}**\n{link}")
 
 @client.event
 async def on_ready():
@@ -194,4 +199,3 @@ if TOKEN:
     client.run(TOKEN)
 else:
     print("❌ DISCORD_TOKEN is not set in environment variables.")
-
