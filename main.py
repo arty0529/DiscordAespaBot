@@ -20,10 +20,10 @@ NINGNING_CHANNEL_ID = 1232593537770717234
 CHECK_INTERVAL_MINUTES = 5
 
 TWITTER_ROLE_IDS = {
-    "TWITTER_BBL": 123220709682132179  # adjust if needed
+    "TWITTER_BBL": 123220709682132179
 }
 
-# ==== NITTER INSTANCES (for fallback) ====
+# ==== NITTER INSTANCES ====
 NITTER_INSTANCES = [
     "https://nitter.poast.org",
     "https://nitter.net",
@@ -31,16 +31,14 @@ NITTER_INSTANCES = [
     "https://nitter.kavin.rocks",
 ]
 
-# ==== FEEDS BY CHANNEL ====
+# ==== FEEDS ====
 FEEDS_BY_CHANNEL = {
     AESPA_UPDATES_CHANNEL_ID: {
-        # aespa official
         "Instagram_aespa": "https://rsshub-sc05.onrender.com/instagram/user/aespa_official",
         "Twitter_aespa": "aespa_official",
         "TikTok": "https://rsshub-sc05.onrender.com/tiktok/user/aespa_official",
         "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg",
 
-        # BBL Twitters (usernames only)
         "Twitter_winrinabbl": "winrinabbl",
         "Twitter_winrinabbl1": "winrina_bbl",
         "Twitter_ningbbl": "ningtexts",
@@ -61,7 +59,7 @@ FEEDS_BY_CHANNEL = {
     },
 }
 
-# ==== KEEP-ALIVE SERVER (for Replit/Render) ====
+# ==== KEEP-ALIVE SERVER ====
 app = Flask("")
 
 @app.route("/")
@@ -74,7 +72,7 @@ def run():
 def keep_alive():
     Thread(target=run).start()
 
-# ==== DISCORD CLIENT SETUP ====
+# ==== DISCORD CLIENT ====
 intents = discord.Intents.default()
 intents.guilds = True
 intents.messages = True
@@ -82,22 +80,23 @@ intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-# ==== LAST SEEN POSTS CACHE (persistent) ====
-LAST_SEEN_FILE = "last_seen.json"
+# ==== LAST SEEN CACHE ====
+CACHE_FILE = "last_seen.json"
 
 def load_last_seen():
-    try:
-        with open(LAST_SEEN_FILE, "r") as f:
-            data = json.load(f)
-            return {k: deque(v, maxlen=20) for k, v in data.items()}
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {key: deque(maxlen=20) for feeds in FEEDS_BY_CHANNEL.values() for key in feeds}
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "r") as f:
+            return json.load(f)
+    return {key: [] for feeds in FEEDS_BY_CHANNEL.values() for key in feeds}
 
 def save_last_seen():
-    with open(LAST_SEEN_FILE, "w") as f:
-        json.dump({k: list(v) for k, v in last_seen.items()}, f)
+    with open(CACHE_FILE, "w") as f:
+        json.dump(last_seen, f)
 
 last_seen = load_last_seen()
+for key in [k for feeds in FEEDS_BY_CHANNEL.values() for k in feeds]:
+    if key not in last_seen:
+        last_seen[key] = []
 
 # ==== UTILS ====
 def extract_thumbnail_from_summary(summary):
@@ -105,7 +104,6 @@ def extract_thumbnail_from_summary(summary):
     return match.group(1) if match else None
 
 def get_feed_entries(feed_url):
-    """Return parsed feed entries (list)."""
     try:
         feed = feedparser.parse(feed_url)
         return feed.entries if feed.entries else []
@@ -114,7 +112,6 @@ def get_feed_entries(feed_url):
         return []
 
 def get_nitter_feed(username):
-    """Try multiple Nitter instances until one works."""
     for base in NITTER_INSTANCES:
         url = f"{base}/{username}/rss"
         try:
@@ -139,9 +136,8 @@ async def check_feeds():
 
         for platform_key, feed_value in feeds.items():
             url = feed_value
-            username = feed_value  # keep actual username for later
+            username = feed_value
 
-            # Twitter: resolve via Nitter
             if platform_key.startswith("Twitter"):
                 url = get_nitter_feed(feed_value)
                 if not url:
@@ -154,60 +150,58 @@ async def check_feeds():
                 print(f"❌ No entries found for {platform_key}.")
                 continue
 
-            for entry in entries:
-                link = entry.get("link") or entry.get("id")
-                title = entry.get("title", f"New post on {platform_key}")
-                summary = entry.get("summary", "")
+            entry = entries[0]  # only newest post
+            link = entry.get("link") or entry.get("id")
+            title = entry.get("title", f"New post on {platform_key}")
+            summary = entry.get("summary", "")
 
-                if link in last_seen[platform_key]:
-                    print(f"[CACHE HIT] {platform_key} already has {link}")
-                    continue  # already sent
+            if link in last_seen[platform_key]:
+                print(f"[CACHE HIT] {platform_key} already has {link}")
+                continue
 
-                # update cache + save persistently
-                last_seen[platform_key].append(link)
-                save_last_seen()
-                print(f"✅ New entry for {platform_key}: {title} ({link})")
+            last_seen[platform_key].append(link)
+            save_last_seen()
+            print(f"✅ New entry for {platform_key}: {title} ({link})")
 
-                # Instagram posts
-                if platform_key.startswith("Instagram"):
-                    ig_user = platform_key.split("_")[1]
-                    thumbnail_url = None
-                    if "media_content" in entry:
-                        media = entry.media_content
-                        if isinstance(media, list) and media:
-                            thumbnail_url = media[0].get("url")
-                    if not thumbnail_url:
-                        thumbnail_url = extract_thumbnail_from_summary(summary)
+            # Instagram
+            if platform_key.startswith("Instagram"):
+                ig_user = platform_key.split("_")[1]
+                thumbnail_url = None
+                if "media_content" in entry:
+                    media = entry.media_content
+                    if isinstance(media, list) and media:
+                        thumbnail_url = media[0].get("url")
+                if not thumbnail_url:
+                    thumbnail_url = extract_thumbnail_from_summary(summary)
 
-                    embed = discord.Embed(
-                        title=f"📸 New Instagram post by {ig_user}",
-                        description=summary,
-                    )
-                    if thumbnail_url:
-                        embed.set_image(url=thumbnail_url)
+                embed = discord.Embed(
+                    title=f"📸 New Instagram post by {ig_user}",
+                    description=summary,
+                )
+                if thumbnail_url:
+                    embed.set_image(url=thumbnail_url)
 
-                    await channel.send(content=link, embed=embed)
+                await channel.send(content=link, embed=embed)
 
-                # Twitter posts
-                elif platform_key.startswith("Twitter"):
-                    role_id = TWITTER_ROLE_IDS.get("TWITTER_BBL")
-                    mention = f"<@&{role_id}>" if role_id else ""
-                    await channel.send(f"🐦 {mention} New tweet by @{username}:\n**{title}**\n{link}")
+            # Twitter
+            elif platform_key.startswith("Twitter"):
+                role_id = TWITTER_ROLE_IDS.get("TWITTER_BBL")
+                mention = f"<@&{role_id}>" if role_id else ""
+                await channel.send(f"🐦 {mention} New tweet by @{username}:\n**{title}**\n{link}")
 
-                # YouTube / TikTok
-                elif "YouTube" in platform_key:
-                    await channel.send(f"📢 New YouTube upload:\n**{title}**\n{link}")
-                elif "TikTok" in platform_key:
-                    await channel.send(f"🎵 New TikTok post:\n**{title}**\n{link}")
+            # YouTube / TikTok
+            elif "YouTube" in platform_key:
+                await channel.send(f"📢 New YouTube upload:\n**{title}**\n{link}")
+            elif "TikTok" in platform_key:
+                await channel.send(f"🎵 New TikTok post:\n**{title}**\n{link}")
 
+# ==== EVENTS ====
 @client.event
 async def on_ready():
     await client.wait_until_ready()
     print(f"✅ Logged in as {client.user}")
-
     activity = discord.Activity(type=discord.ActivityType.listening, name="Rich Man by aespa")
     await client.change_presence(status=discord.Status.online, activity=activity)
-
     check_feeds.start()
 
 # ==== START BOT ====
