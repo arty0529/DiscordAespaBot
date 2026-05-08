@@ -59,7 +59,7 @@ def run():
 def keep_alive():
     Thread(target=run).start()
 
-==== DISCORD CLIENT ====
+# ==== DISCORD CLIENT ====
 intents = discord.Intents.default()
 intents.guilds = True
 intents.messages = True
