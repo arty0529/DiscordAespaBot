@@ -7,7 +7,7 @@ import requests
 import random
 from discord.ext import tasks
 
-==== CONFIGURATION ====
+# ==== CONFIGURATION ====
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 AESPA_UPDATES_CHANNEL_ID = 1232207096821321799
@@ -52,7 +52,7 @@ intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-==== CACHE ====
+# ==== CACHE ====
 CACHE_FILE = "last_seen.json"
 
 def load_last_seen():
@@ -67,7 +67,7 @@ def save_last_seen():
 
 last_seen = load_last_seen()
 
-==== UTILS ====
+# ==== UTILS ====
 def get_feed_entries(feed_url):
     try:
         feed = feedparser.parse(feed_url)
@@ -87,7 +87,7 @@ def get_nitter_feed(username):
             continue
     return None
 
-==== LOOP ====
+# ==== LOOP ====
 @tasks.loop(minutes=CHECK_INTERVAL_MINUTES)
 async def check_feeds():
     for channel_id, feeds in FEEDS_BY_CHANNEL.items():
@@ -133,7 +133,7 @@ async def on_ready():
 
     check_feeds.start()
 
-==== RUN ====
+# ==== RUN ====
 if TOKEN:
     client.run(TOKEN)
 else:
