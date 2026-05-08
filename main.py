@@ -19,28 +19,21 @@ WINTER_CHANNEL_ID = 1232593476902719538
 NINGNING_CHANNEL_ID = 1232593537770717234
 CHECK_INTERVAL_MINUTES = 5
 
-TWITTER_ROLE_IDS = {
-    "TWITTER_BBL": 123220709682132179
-}
-
-NITTER_INSTANCES = [
-    "https://nitter.poast.org/",
-    "https://nitter.net/",
-    "https://nitter.42l.fr/",
-    "https://nitter.kavin.rocks/",
-]
 
 songs = [
+    "aespa - Armageddon",
+    "aespa - Black Mamba",
+    "aespa - Rich Man",
     "aespa - Supernova",
     "aespa - Drama",
     "aespa - Spicy",
+    "aespa - Welcome To My World",
     "aespa - Next Level"
 ]
 
 FEEDS_BY_CHANNEL = {
     AESPA_UPDATES_CHANNEL_ID: {
-        "Instagram_aespa": "https://rsshub-sc05.onrender.com/instagram/user/aespa_official",
-        "Twitter_aespa": "aespa_official",
+        "Instagram_aespa": "https://api.apify.com/v2/datasets/0yMSwteKWhSBVh9gS/items?token=apify_api_Pui8MEwyJC4ptIHd2jhsT7UDT9qty10khJZI",
         "TikTok": "https://rsshub-sc05.onrender.com/tiktok/user/aespa_official",
         "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg",
     }
@@ -131,23 +124,32 @@ async def check_feeds():
             last_seen[key] = link
             save_last_seen()
 
-            await channel.send(f"New update:\n{link}")
+            await channel.send(f"📢 New Content upload:\n**{title}**\n{link}")
 
+# === LOOPPING ===
+@tasks.loop(minutes=10)
+async def rotate_status():
+    song = random.choice(songs)
+
+    await client.change_presence(
+        activity=discord.Activity(
+            type=discord.ActivityType.listening,
+            name=song
+        )
+    )
 # ==== READY EVENT ====
 @client.event
 async def on_ready():
     print(f"Logged in as {client.user}")
 
+    # set initial status immediately
     song = random.choice(songs)
-
-    activity = discord.Activity(
-        type=discord.ActivityType.listening,
-        name=song
+    await client.change_presence(
+        activity=discord.Activity(
+            type=discord.ActivityType.listening,
+            name=song
+        )
     )
-
-    await client.change_presence(activity=activity)
-
-    check_feeds.start()
 
 # ==== START EVERYTHING ====
 keep_alive()
