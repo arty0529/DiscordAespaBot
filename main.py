@@ -6,6 +6,8 @@ import feedparser
 import requests
 import random
 from discord.ext import tasks
+from flask import Flask
+from threading import Thread
 
 # ==== CONFIGURATION ====
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -44,7 +46,20 @@ FEEDS_BY_CHANNEL = {
     }
 }
 
-# ==== DISCORD CLIENT ====
+#  ==== KEEP-ALIVE SERVER (REQUIRED for Render Web Service) ====
+app = Flask(name)
+
+@app.route("/")
+def home():
+    return "✅ Bot is running."
+
+def run():
+    app.run(host="0.0.0.0", port=8080)
+
+def keep_alive():
+    Thread(target=run).start()
+
+==== DISCORD CLIENT ====
 intents = discord.Intents.default()
 intents.guilds = True
 intents.messages = True
@@ -118,6 +133,7 @@ async def check_feeds():
 
             await channel.send(f"New update:\n{link}")
 
+# ==== READY EVENT ====
 @client.event
 async def on_ready():
     print(f"Logged in as {client.user}")
@@ -133,7 +149,9 @@ async def on_ready():
 
     check_feeds.start()
 
-# ==== RUN ====
+# ==== START EVERYTHING ====
+keep_alive()
+
 if TOKEN:
     client.run(TOKEN)
 else:
