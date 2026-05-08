@@ -44,7 +44,7 @@ FEEDS_BY_CHANNEL = {
     }
 }
 
-==== DISCORD CLIENT ====
+# ==== DISCORD CLIENT ====
 intents = discord.Intents.default()
 intents.guilds = True
 intents.messages = True
