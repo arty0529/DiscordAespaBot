@@ -47,7 +47,7 @@ FEEDS_BY_CHANNEL = {
 }
 
 #  ==== KEEP-ALIVE SERVER (REQUIRED for Render Web Service) ====
-app = Flask(name)
+app = Flask("")
 
 @app.route("/")
 def home():
