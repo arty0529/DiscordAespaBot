@@ -21,6 +21,7 @@ CHECK_INTERVAL_MINUTES = 5
 
 
 songs = [
+    "aespa - Whiplash",
     "aespa - Armageddon",
     "aespa - Black Mamba",
     "aespa - Rich Man",
@@ -127,7 +128,7 @@ async def check_feeds():
             await channel.send(f"📢 New Content upload:\n**{title}**\n{link}")
 
 # === LOOPPING ===
-@tasks.loop(minutes=10)
+@tasks.loop(minutes=8)
 async def rotate_status():
     song = random.choice(songs)
 
