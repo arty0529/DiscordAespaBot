@@ -1,46 +1,20 @@
-import os
-import re
-import json
 import discord
-import feedparser
-import requests
-import random
 from discord.ext import tasks
+import feedparser
+import os
 from flask import Flask
 from threading import Thread
+import random
 
 # ==== CONFIGURATION ====
 TOKEN = os.getenv("DISCORD_TOKEN")
-
-AESPA_UPDATES_CHANNEL_ID = 1232207096821321799
-KARINA_CHANNEL_ID = 1232593363350458369
-GISELLE_CHANNEL_ID = 1232593424448749578
-WINTER_CHANNEL_ID = 1232593476902719538
-NINGNING_CHANNEL_ID = 1232593537770717234
+UPDATE_CHANNEL_ID = 1232207096821321799
 CHECK_INTERVAL_MINUTES = 5
 
+# aespa Official YouTube Channel Feed
+YOUTUBE_FEED = "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg"
 
-songs = [
-    "aespa - Whiplash",
-    "aespa - Armageddon",
-    "aespa - Black Mamba",
-    "aespa - Rich Man",
-    "aespa - Supernova",
-    "aespa - Drama",
-    "aespa - Spicy",
-    "aespa - Welcome To My World",
-    "aespa - Next Level"
-]
-
-FEEDS_BY_CHANNEL = {
-    AESPA_UPDATES_CHANNEL_ID: {
-        "Instagram_aespa": "https://api.apify.com/v2/datasets/0yMSwteKWhSBVh9gS/items?token=apify_api_Pui8MEwyJC4ptIHd2jhsT7UDT9qty10khJZI",
-        "TikTok": "https://rsshub-sc05.onrender.com/tiktok/user/aespa_official",
-        "YouTube": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg",
-    }
-}
-
-#  ==== KEEP-ALIVE SERVER (REQUIRED for Render Web Service) ====
+# ==== KEEP-ALIVE SERVER ====
 app = Flask("")
 
 @app.route("/")
@@ -57,105 +31,94 @@ def keep_alive():
 intents = discord.Intents.default()
 intents.guilds = True
 intents.messages = True
-intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-# ==== CACHE ====
-CACHE_FILE = "last_seen.json"
+# ==== LAST VIDEO CACHE ====
+last_youtube = None
 
-def load_last_seen():
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r") as f:
-            return json.load(f)
-    return {}
+# ==== AESPA STATUS ROTATION ====
+aespa_statuses = [
+    "🎵 Dirty Work",
+    "🎵 Whiplash",
+    "🎵 Supernova",
+    "🎵 Armageddon",
+    "🎵 Drama",
+    "🎵 Spicy",
+    "🎵 Better Things",
+    "🎵 Next Level",
+    "🎵 Savage",
+    "🎵 Black Mamba",
+    "🎵 Illusion",
+    "🎵 Lucid Dream",
+    "🎵 Salty & Sweet",
+    "🎵 Set The Tone",
+    "💙 supporting aespa",
+    "🌙 watching aespa content",
+    "✨ MYs everywhere",
+    "🎤 aespa updates",
+    "🦋 KARINA",
+    "⭐ GISELLE",
+    "🌙 WINTER",
+    "🔥 NINGNING"
+]
 
-def save_last_seen():
-    with open(CACHE_FILE, "w") as f:
-        json.dump(last_seen, f)
+def get_latest_entry(feed_url):
+    feed = feedparser.parse(feed_url)
+    return feed.entries[0] if feed.entries else None
 
-last_seen = load_last_seen()
-
-# ==== UTILS ====
-def get_feed_entries(feed_url):
-    try:
-        feed = feedparser.parse(feed_url)
-        return feed.entries if feed.entries else []
-    except Exception as e:
-        print(f"Failed feed: {e}")
-        return []
-
-def get_nitter_feed(username):
-    for base in NITTER_INSTANCES:
-        url = f"{base}/{username}/rss"
-        try:
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                return url
-        except:
-            continue
-    return None
-
-# ==== LOOP ====
-@tasks.loop(minutes=CHECK_INTERVAL_MINUTES)
-async def check_feeds():
-    for channel_id, feeds in FEEDS_BY_CHANNEL.items():
-        channel = client.get_channel(channel_id)
-        if not channel:
-            continue
-
-        for key, value in feeds.items():
-            url = value
-
-            if key.startswith("Twitter"):
-                url = get_nitter_feed(value)
-                if not url:
-                    continue
-
-            entries = get_feed_entries(url)
-            if not entries:
-                continue
-
-            entry = entries[0]
-            link = entry.get("link") or entry.get("id")
-
-            if last_seen.get(key) == link:
-                continue
-
-            last_seen[key] = link
-            save_last_seen()
-
-            await channel.send(f"📢 New Content upload:\n**{title}**\n{link}")
-
-# === LOOPPING ===
-@tasks.loop(minutes=8)
+# ==== STATUS ROTATION ====
+@tasks.loop(minutes=5)
 async def rotate_status():
-    song = random.choice(songs)
-
     await client.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.listening,
-            name=song
+            name=random.choice(aespa_statuses)
         )
     )
-# ==== READY EVENT ====
+
+# ==== YOUTUBE CHECKER ====
+@tasks.loop(minutes=CHECK_INTERVAL_MINUTES)
+async def check_youtube():
+    global last_youtube
+
+    channel = client.get_channel(UPDATE_CHANNEL_ID)
+    if not channel:
+        return
+
+    entry = get_latest_entry(YOUTUBE_FEED)
+
+    if entry and entry.link != last_youtube:
+        last_youtube = entry.link
+
+        await channel.send(
+            f"📢 **New aespa YouTube Upload!**\n"
+            f"**{entry.title}**\n"
+            f"{entry.link}"
+        )
+
+# ==== BOT READY ====
 @client.event
 async def on_ready():
-    print(f"Logged in as {client.user}")
+    print(f"✅ Logged in as {client.user}")
 
-    # set initial status immediately
-    song = random.choice(songs)
+    if not rotate_status.is_running():
+        rotate_status.start()
+
+    if not check_youtube.is_running():
+        check_youtube.start()
+
     await client.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.listening,
-            name=song
+            name=random.choice(aespa_statuses)
         )
     )
 
-# ==== START EVERYTHING ====
+# ==== START ====
 keep_alive()
 
 if TOKEN:
     client.run(TOKEN)
 else:
-    print("DISCORD_TOKEN missing")
+    print("❌ DISCORD_TOKEN is not set.")
