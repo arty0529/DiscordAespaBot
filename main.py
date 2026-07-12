@@ -18,7 +18,7 @@ CHECK_INTERVAL_MINUTES = 5
 YOUTUBE_FEED = "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg"
 
 # ==== AESPA FACTS ====
-with open("aespa_facts.json", "r", encoding="utf-8") as f:
+with open("aespafacts.json", "r", encoding="utf-8") as f:
     aespafacts = json.load(f)
 
 # ==== KEEP-ALIVE SERVER ====
