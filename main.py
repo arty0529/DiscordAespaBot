@@ -6,14 +6,14 @@ from flask import Flask
 from threading import Thread
 import random
 import json
-from datetime import time
+from datetime import time, timezone, timedelta
 
 # ==== CONFIGURATION ====
 TOKEN = os.getenv("DISCORD_TOKEN")
 UPDATE_CHANNEL_ID = 1232207096821321799
 FACT_CHANNEL_ID = 1232181937846620195
 CHECK_INTERVAL_MINUTES = 5
-
+PH_TZ = timezone(timedelta(hours=8))
 # aespa Official YouTube Channel Feed
 YOUTUBE_FEED = "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg"
 
@@ -101,7 +101,7 @@ async def check_youtube():
         )
 
 # ==== DAILY FACTS ==== 
-@tasks.loop(hours=0, minutes=1)
+@tasks.loop(time=time(hour=0, minute=1, tzinfo=PH_TZ))
 async def daily_fact():
     print("Daily fact task is running")
 
