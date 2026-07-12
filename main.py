@@ -5,6 +5,8 @@ import os
 from flask import Flask
 from threading import Thread
 import random
+import json
+from datetime import time
 
 # ==== CONFIGURATION ====
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -13,6 +15,10 @@ CHECK_INTERVAL_MINUTES = 5
 
 # aespa Official YouTube Channel Feed
 YOUTUBE_FEED = "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK4yuJ_g1lgQbg"
+
+# ==== AESPA FACTS ====
+with open("aespa_facts.json", "r", encoding="utf-8") as f:
+    aespa_facts = json.load(f)
 
 # ==== KEEP-ALIVE SERVER ====
 app = Flask("")
@@ -92,6 +98,24 @@ async def check_youtube():
             f"{entry.link}"
         )
 
+# ==== DAILY FACTS ==== 
+@tasks.loop(time=time(hour=1, minute=0))
+async def daily_fact():
+    channel = client.get_channel(UPDATE_CHANNEL_ID)
+
+    if channel:
+        fact = random.choice(aespa_facts)
+
+        embed = discord.Embed(
+            title="💙 Daily aespa Fact",
+            description=fact,
+            color=0x7ED6DF
+        )
+
+        embed.set_footer(text="Come back tomorrow for another fact!")
+
+        await channel.send(embed=embed)
+
 # ==== BOT READY ====
 @client.event
 async def on_ready():
@@ -102,6 +126,9 @@ async def on_ready():
 
     if not check_youtube.is_running():
         check_youtube.start()
+
+        if not daily_fact.is_running():
+        daily_fact.start()
 
     await client.change_presence(
         activity=discord.Activity(
