@@ -19,7 +19,7 @@ YOUTUBE_FEED = "https://www.youtube.com/feeds/videos.xml?channel_id=UC9GtSLeksfK
 
 # ==== AESPA FACTS ====
 with open("aespa_facts.json", "r", encoding="utf-8") as f:
-    aespa_facts = json.load(f)
+    aespafacts = json.load(f)
 
 # ==== KEEP-ALIVE SERVER ====
 app = Flask("")
@@ -63,6 +63,7 @@ aespa_statuses = [
     " Lucid Dream",
     " Salty & Sweet",
     " Set The Tone",
+    " Kiss 'N Tell",
 ]
 
 def get_latest_entry(feed_url):
