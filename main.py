@@ -101,7 +101,7 @@ async def check_youtube():
         )
 
 # ==== DAILY FACTS ==== 
-@tasks.loop(time=time(hour=1, minute=0))
+@tasks.loop(time=time(hour=0, minute=1))
 async def daily_fact():
     channel = client.get_channel(FACT_CHANNEL_ID)
 
