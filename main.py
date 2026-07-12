@@ -11,6 +11,7 @@ from datetime import time
 # ==== CONFIGURATION ====
 TOKEN = os.getenv("DISCORD_TOKEN")
 UPDATE_CHANNEL_ID = 1232207096821321799
+FACT_CHANNEL_ID = 1232181937846620195
 CHECK_INTERVAL_MINUTES = 5
 
 # aespa Official YouTube Channel Feed
@@ -101,7 +102,7 @@ async def check_youtube():
 # ==== DAILY FACTS ==== 
 @tasks.loop(time=time(hour=1, minute=0))
 async def daily_fact():
-    channel = client.get_channel(UPDATE_CHANNEL_ID)
+    channel = client.get_channel(FACT_CHANNEL_ID)
 
     if channel:
         fact = random.choice(aespa_facts)
