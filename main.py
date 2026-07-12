@@ -101,7 +101,7 @@ async def check_youtube():
         )
 
 # ==== DAILY FACTS ==== 
-@tasks.loop(minutes=1)
+@tasks.loop(hours=0, minutes=1)
 async def daily_fact():
     print("Daily fact task is running")
 
