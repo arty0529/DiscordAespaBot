@@ -101,22 +101,26 @@ async def check_youtube():
         )
 
 # ==== DAILY FACTS ==== 
-@tasks.loop(time=time(hour=0, minute=1))
+@tasks.loop(minutes=1)
 async def daily_fact():
+    print("Daily fact task is running")
+
     channel = client.get_channel(FACT_CHANNEL_ID)
 
-    if channel:
-        fact = random.choice(aespafacts)
+    if channel is None:
+        print("Channel not found!")
+        return
 
-        embed = discord.Embed(
-            title="💙 Daily aespa Fact",
-            description=fact,
-            color=0x7ED6DF
-        )
+    fact = random.choice(aespafacts)
 
-        embed.set_footer(text="Come back tomorrow for another fact!")
+    embed = discord.Embed(
+        title="💙 Daily aespa Fact",
+        description=fact,
+        color=0x7ED6DF
+    )
 
-        await channel.send(embed=embed)
+    await channel.send(embed=embed)
+    print("Fact sent!")
 
 # ==== BOT READY ====
 @client.event
