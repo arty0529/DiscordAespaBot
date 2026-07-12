@@ -128,7 +128,7 @@ async def on_ready():
     if not check_youtube.is_running():
         check_youtube.start()
 
-        if not daily_fact.is_running():
+    if not daily_fact.is_running():
         daily_fact.start()
 
     await client.change_presence(
