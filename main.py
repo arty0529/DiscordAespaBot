@@ -106,7 +106,7 @@ async def daily_fact():
     channel = client.get_channel(FACT_CHANNEL_ID)
 
     if channel:
-        fact = random.choice(aespa_facts)
+        fact = random.choice(aespafacts)
 
         embed = discord.Embed(
             title="💙 Daily aespa Fact",
